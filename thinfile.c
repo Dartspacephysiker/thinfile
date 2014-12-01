@@ -44,9 +44,10 @@ int main( int argc, char * argv[] )
   uint8_t      bVerbose;
 
   uint64_t     ullInFilePos;
+  uint64_t     ullBytesRead;
   uint64_t     ullSampsRead;
-  uint64_t     ullTotSampsRead;
-  uint64_t     ullSampsWritten;
+  uint64_t     ullTotBytesRead;
+  uint64_t     ullBytesWritten;
   
   //Initialize vars
   llSampleRate      = DEF_SAMP_RATE;
@@ -182,7 +183,7 @@ int main( int argc, char * argv[] )
     printf("Number of iterations :\t%" PRIi64 " bytes\n",llNumIterations);    
   }
 
-  if ( llNumIterations <= 0 || llSampleSize <= 0 || llThinInterval <= 0 || llNumSamps <= 0 || llHeaderSkipBytes <= 0 || llFooterSkipBytes <= 0 )
+  if ( llNumIterations < 0 || llSampleSize <= 0 || llThinInterval <= 0 || llNumSamps <= 0 || llHeaderSkipBytes < 0 || llFooterSkipBytes < 0 )
   {
     fprintf(stderr,"Invalid argument provided! Exiting...\n");
     return EXIT_FAILURE;
@@ -242,9 +243,10 @@ int main( int argc, char * argv[] )
 
   //To the beginning!
   ullInFilePos = fseek(psuInFile, llHeaderSkipBytes, SEEK_SET);   //If header bytes given, skip those; otherwise, go to zero
+  ullBytesRead = 0;
   ullSampsRead = 0;
-  ullTotSampsRead = 0; 
-  ullSampsWritten = 0;
+  ullTotBytesRead = 0; 
+  ullBytesWritten = 0;
 
 
   if ( llFooterSkipBytes )
@@ -258,29 +260,30 @@ int main( int argc, char * argv[] )
   while( ( ullInFilePos = ftell(psuInFile) ) < suInFileStat.st_size  )
     {
       //Get samples from infile
-      ullSampsRead = fread(pauBuff, llSampleSize, llNumSamps, psuInFile);
-      if (ullSampsRead != llSampleSize * llNumSamps )
+      ullBytesRead = fread(pauBuff, llSampleSize, llNumSamps, psuInFile);
+      if (ullBytesRead != llSampleSize * llNumSamps )
 	{
-	  fprintf(stderr,"Only read %" PRIu64 " bytes of %" PRIu64 " requested!\nEOF?\n",ullSampsRead,llSampleSize*llNumSamps);
+	  fprintf(stderr,"Only read %" PRIu64 " bytes of %" PRIu64 " requested!\nEOF?\n",ullBytesRead,llSampleSize*llNumSamps);
 	  break;
 	}
 
       //Write samples to outfile
-      ullSampsWritten = fwrite(pauBuff, llSampleSize, llNumSamps, psuOutFile);
-      if ( ullSampsWritten != ullSampsRead )
+      ullBytesWritten = fwrite(pauBuff, llSampleSize, llNumSamps, psuOutFile);
+      if ( ullBytesWritten != ullBytesRead )
 	{
-	  fprintf(stderr,"Only wrote %" PRIu64 " bytes of %" PRIu64 " requested!\nWrite error?\n",ullSampsWritten,ullSampsRead);
+	  fprintf(stderr,"Only wrote %" PRIu64 " bytes of %" PRIu64 " requested!\nWrite error?\n",ullBytesWritten,ullBytesRead);
 	  break;
 	}
       
       if (bVerbose)
 	printf("Read %" PRIu64 " bytes (Sample #%" PRIu64 ")\n",ullInFilePos,ullSampsRead);
 
-      ullTotSampsRead += ullSampsRead;
+      ullTotBytesRead += ullBytesRead;
+      ullSampsRead++;
 
       fseek(psuInFile, ullInterval , SEEK_CUR );
 
-      if( ullSampsRead >= llNumIterations )
+      if( (llNumIterations != 0 ) && ( ullSampsRead >= llNumIterations ) )
       {
 	printf("Read %" PRIu64 " samples total! Breaking out of loop...\n", ullSampsRead);
 	break;
@@ -289,8 +292,8 @@ int main( int argc, char * argv[] )
   
 
   //Summary
-  printf("Wrote %" PRIu64 " samples out of %" PRIu64 " samples total\n", ullTotSampsRead, (suInFileStat.st_size - llHeaderSkipBytes)/llSampleSize);
-  printf("Output file is %.9f%% smaller than input file\n", (float)((float)( ullTotSampsRead * llSampleSize )/(float)(suInFileStat.st_size-llHeaderSkipBytes)));
+  printf("Wrote %" PRIu64 " bytes out of %" PRIu64 " bytes total\n", ullTotBytesRead, (suInFileStat.st_size - llHeaderSkipBytes));
+  printf("Output file is %.9f%% smaller than input file\n", (float)((float)( ullTotBytesRead * llSampleSize )/(float)(suInFileStat.st_size-llHeaderSkipBytes)));
 
   //close files
   fclose(psuInFile);
@@ -307,14 +310,15 @@ void vUsage(void)
   printf("                                                                      \n");
   printf("   <filename>   Input/output file names                               \n");
   printf("                                                                      \n");
-  printf("   INPUT FILE PARAMS                                                  \n");
+  printf("   INPUT FILE PARAMETERS                                              \n");
   printf("   -s SIZE      Size of samples                    (in bytes) [%i]    \n",DEF_SAMP_SIZE);
   printf("   -S RATE      Sample Rate                        (in S/s)   [%i]    \n",DEF_SAMP_RATE);
   printf("                                                                      \n");
-  printf("   OUTPUT FILE PARAMS                                                 \n");
+  printf("   OUTPUT FILE PARAMETERS                                             \n");
   printf("   -t INTERVAL  Thinning interval                  (in ms)    [%i]    \n",DEF_THIN_INTERVAL);
   printf("   -n NUM       # samples to grab                             [%i]    \n",DEF_NUM_SAMPS);
   printf("                                                                      \n");
+  printf("   OPTIONAL PARAMETERS                                                \n");
   printf("   -h HBYTES    Size of header                     (in bytes) [%i]    \n",DEF_SKIP);
   printf("   -f HBYTES    Size of footer                     (in bytes) [%i]    \n",DEF_SKIP);
   printf("   -i ITER      Total number of thinning intervals            [%i]    \n",DEF_NUM_ITER);
