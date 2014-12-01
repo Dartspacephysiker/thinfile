@@ -9,6 +9,10 @@
 #define DEF_SAMP_SIZE     1
 #define DEF_THIN_INTERVAL 1000
 #define DEF_NUM_SAMPS     8192
+
+#define DEF_SKIP          0
+#define DEF_NUM_ITER      0
+
 #define DEF_VERBOSE       0
 
 //function declarations
@@ -25,13 +29,18 @@ int main( int argc, char * argv[] )
 
   FILE       * psuOutFile;
   char       * pauBuff;
-  uint64_t     ullNInterval;
+  uint64_t     ullInterval;
   
   int          iArgIdx;
-  uint64_t     ullSampleRate;         //Sampling rate used to produce infile (in Hz)
-  uint64_t     ullSampleSize;         //Sample size (in bytes)
-  uint64_t     ullThinInterval;       //Periodic interval at which to grab a given number of samples
-  uint64_t     ullNumSamps;           //Number of samples to grab at each periodic interval
+  int64_t      llSampleRate;         //Sampling rate used to produce infile (in Hz)
+  int64_t      llSampleSize;         //Sample size (in bytes)
+  int64_t      llThinInterval;       //Periodic interval at which to grab a given number of samples
+  int64_t      llNumSamps;           //Number of samples to grab at each periodic interval
+
+  int64_t      llHeaderSkipBytes;
+  int64_t      llFooterSkipBytes;
+  int64_t      llNumIterations;
+
   uint8_t      bVerbose;
 
   uint64_t     ullInFilePos;
@@ -40,12 +49,17 @@ int main( int argc, char * argv[] )
   uint64_t     ullSampsWritten;
   
   //Initialize vars
-  ullSampleRate   = DEF_SAMP_RATE;
-  ullSampleSize   = DEF_SAMP_SIZE;
-  ullThinInterval = DEF_THIN_INTERVAL;
-  ullNumSamps     = DEF_NUM_SAMPS;
-  bVerbose        = DEF_VERBOSE;
+  llSampleRate      = DEF_SAMP_RATE;
+  llSampleSize      = DEF_SAMP_SIZE;
+  llThinInterval    = DEF_THIN_INTERVAL;
+  llNumSamps        = DEF_NUM_SAMPS;
   
+  llHeaderSkipBytes = DEF_SKIP;
+  llFooterSkipBytes = DEF_SKIP;
+  llNumIterations   = DEF_NUM_ITER;
+
+  bVerbose          = DEF_VERBOSE;
+
   if (argc < 2) 
     {
       vUsage();
@@ -70,7 +84,7 @@ int main( int argc, char * argv[] )
 		  vUsage();
 		  return EXIT_FAILURE;
 		}
-	      sscanf(argv[iArgIdx],"%" PRIu64 ,&ullSampleSize);
+	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llSampleSize);
 	      break;
 
 	    case 'S' :                   /* Sample rate */
@@ -80,7 +94,7 @@ int main( int argc, char * argv[] )
 		  vUsage();
 		  return EXIT_FAILURE;
 		}
-	      sscanf(argv[iArgIdx],"%" PRIu64 ,&ullSampleRate);
+	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llSampleRate);
 	      break;
 
 	    case 't' :                   /* Thinning Interval */
@@ -90,7 +104,7 @@ int main( int argc, char * argv[] )
 		  vUsage();
 		  return EXIT_FAILURE;
 		}
-	      sscanf(argv[iArgIdx],"%" PRIu64 ,&ullThinInterval);
+	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llThinInterval);
 	      break;
 
 	    case 'n' :                   /* # Samples */
@@ -100,7 +114,37 @@ int main( int argc, char * argv[] )
 		  vUsage();
 		  return EXIT_FAILURE;
 		}
-	      sscanf(argv[iArgIdx],"%" PRIu64 ,&ullNumSamps);
+	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llNumSamps);
+	      break;
+
+	    case 'h' :                   /* Header bytes to skip */
+	      iArgIdx++;
+	      if(iArgIdx >= argc)
+		{
+		  vUsage();
+		  return EXIT_FAILURE;
+		}
+	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llHeaderSkipBytes);
+	      break;
+
+	    case 'f' :                   /* Footer bytes to skip */
+	      iArgIdx++;
+	      if(iArgIdx >= argc)
+		{
+		  vUsage();
+		  return EXIT_FAILURE;
+		}
+	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llFooterSkipBytes);
+	      break;
+
+	    case 'i' :                   /* # Iterations */
+	      iArgIdx++;
+	      if(iArgIdx >= argc)
+		{
+		  vUsage();
+		  return EXIT_FAILURE;
+		}
+	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llNumIterations);
 	      break;
 
 	    case 'v' :                  /* Verbosities */
@@ -121,23 +165,41 @@ int main( int argc, char * argv[] )
     } /* end for all arguments */
 
   printf("\n");
-  printf("Sample size       :\t%" PRIu64 " bytes\n",ullSampleSize);
-  printf("Sample rate       :\t%" PRIu64 " S/s\n",ullSampleRate);
-  printf("Thinning interval :\t%" PRIu64 " ms\n",ullThinInterval);
-  printf("Number of samples :\t%" PRIu64 " \n",ullNumSamps);
+  printf("Sample size            :\t%" PRIi64 " bytes\n",llSampleSize);
+  printf("Sample rate            :\t%" PRIi64 " S/s\n",llSampleRate);
+  printf("Thinning interval      :\t%" PRIi64 " ms\n",llThinInterval);
+  printf("Number of samples      :\t%" PRIi64 " \n",llNumSamps);
   
+  if ( llHeaderSkipBytes || llFooterSkipBytes )
+  {
+    printf("\n");
+    printf("Header bytes to skip :\t%" PRIi64 " bytes\n",llHeaderSkipBytes);
+    printf("Footer bytes to skip :\t%" PRIi64 " bytes\n",llFooterSkipBytes);    
+  }
+
+  if ( llNumIterations != 0 )
+  {
+    printf("Number of iterations :\t%" PRIi64 " bytes\n",llNumIterations);    
+  }
+
+  if ( llNumIterations <= 0 || llSampleSize <= 0 || llThinInterval <= 0 || llNumSamps <= 0 || llHeaderSkipBytes <= 0 || llFooterSkipBytes <= 0 )
+  {
+    fprintf(stderr,"Invalid argument provided! Exiting...\n");
+    return EXIT_FAILURE;
+  }
+
   //Calculate size of buffer that we need
-  pauBuff = calloc( ullNumSamps, ullSampleSize );
+  pauBuff = calloc( llNumSamps, llSampleSize );
 
   //Based on sample rate (S/s) and thinning interval (ms),
   //calculate number of samples between each interval
-  ullNInterval = ullSampleRate * ullThinInterval / 1000;
+  ullInterval = llSampleRate * llThinInterval / 1000;
 
-  printf("# Samples/Interval:\t%" PRIu64 " \n",ullNInterval);
+  printf("# Samples/Interval:\t%" PRIu64 " \n",ullInterval);
   printf("\n");
 
   //Can't allow more samples to be grabbed than are in an interval
-  if (ullNInterval < ullNumSamps )
+  if (ullInterval < llNumSamps )
     {
       fprintf(stderr,"Number of samples requested is greater than samples per interval!\nQuitting...\n");
       return EXIT_FAILURE;
@@ -178,28 +240,33 @@ int main( int argc, char * argv[] )
       psuOutFile = stdout;
     }
 
-  
   //To the beginning!
-  ullInFilePos = fseek(psuInFile, 0, SEEK_SET);
+  ullInFilePos = fseek(psuInFile, llHeaderSkipBytes, SEEK_SET);   //If header bytes given, skip those; otherwise, go to zero
   ullSampsRead = 0;
   ullTotSampsRead = 0; 
   ullSampsWritten = 0;
+
+
+  if ( llFooterSkipBytes )
+  {
+    suInFileStat.st_size -= llFooterSkipBytes;
+  }
+  
   
   printf("\nThinning %s...\n", szInFile);
  
   while( ( ullInFilePos = ftell(psuInFile) ) < suInFileStat.st_size  )
     {
       //Get samples from infile
-      ullSampsRead = fread(pauBuff, ullSampleSize, ullNumSamps, psuInFile);
-      if (ullSampsRead != ullSampleSize * ullNumSamps )
+      ullSampsRead = fread(pauBuff, llSampleSize, llNumSamps, psuInFile);
+      if (ullSampsRead != llSampleSize * llNumSamps )
 	{
-	  fprintf(stderr,"Only read %" PRIu64 " bytes of %" PRIu64 " requested!\nEOF?\n",ullSampsRead,ullSampleSize*ullNumSamps);
+	  fprintf(stderr,"Only read %" PRIu64 " bytes of %" PRIu64 " requested!\nEOF?\n",ullSampsRead,llSampleSize*llNumSamps);
 	  break;
 	}
 
       //Write samples to outfile
-
-      ullSampsWritten = fwrite(pauBuff, ullSampleSize, ullNumSamps, psuOutFile);
+      ullSampsWritten = fwrite(pauBuff, llSampleSize, llNumSamps, psuOutFile);
       if ( ullSampsWritten != ullSampsRead )
 	{
 	  fprintf(stderr,"Only wrote %" PRIu64 " bytes of %" PRIu64 " requested!\nWrite error?\n",ullSampsWritten,ullSampsRead);
@@ -207,18 +274,23 @@ int main( int argc, char * argv[] )
 	}
       
       if (bVerbose)
-	printf("Read %" PRIu64 " bytes\n",ullInFilePos);
+	printf("Read %" PRIu64 " bytes (Sample #%" PRIu64 ")\n",ullInFilePos,ullSampsRead);
 
       ullTotSampsRead += ullSampsRead;
 
-      fseek(psuInFile, ullNInterval , SEEK_CUR );
+      fseek(psuInFile, ullInterval , SEEK_CUR );
 
+      if( ullSampsRead >= llNumIterations )
+      {
+	printf("Read %" PRIu64 " samples total! Breaking out of loop...\n", ullSampsRead);
+	break;
+      }
     }
   
 
   //Summary
-  printf("Wrote %" PRIu64 " samples out of %" PRIu64 " samples total\n", ullTotSampsRead, suInFileStat.st_size/ullSampleSize);
-  printf("Output file is %.9f%% smaller than input file\n", (float)((float)( ullTotSampsRead * ullSampleSize )/(float)(suInFileStat.st_size)));
+  printf("Wrote %" PRIu64 " samples out of %" PRIu64 " samples total\n", ullTotSampsRead, (suInFileStat.st_size - llHeaderSkipBytes)/llSampleSize);
+  printf("Output file is %.9f%% smaller than input file\n", (float)((float)( ullTotSampsRead * llSampleSize )/(float)(suInFileStat.st_size-llHeaderSkipBytes)));
 
   //close files
   fclose(psuInFile);
@@ -229,20 +301,23 @@ int main( int argc, char * argv[] )
   
 void vUsage(void)
 {
-    printf("\nthinfile\n");
-    printf("Cherry-pick a subset of samples at a user-specified interval to \"thin\" binary files\n");
-    printf("Usage: thinfile <input file> <output file> [flags]   \n");
-    printf("                                                     \n");
-    printf("   <filename>   Input/output file names              \n");
-    printf("                                                     \n");
-    printf("   INPUT FILE PARAMS                                 \n");
-    printf("   -s SIZE      Size of samples   (in bytes) [%i]    \n",DEF_SAMP_SIZE);
-    printf("   -S RATE      Sample Rate       (in S/s)   [%i]    \n",DEF_SAMP_RATE);
-    printf("                                                     \n");
-    printf("   OUTPUT FILE PARAMS                                \n");
-    printf("   -t INTERVAL  Thinning interval (in ms)    [%i]    \n",DEF_THIN_INTERVAL);
-    printf("   -n NUM       # samples to grab            [%i]    \n",DEF_NUM_SAMPS);
-    printf("                                                     \n");
-    printf("   -v           Verbose                      [%i]    \n",DEF_VERBOSE);
-    printf("                                                     \n");
+  printf("\nthinfile\n");
+  printf("Cherry-pick a subset of samples at a user-specified interval to \"thin\" binary files\n");
+  printf("Usage: thinfile <input file> <output file> [flags]   \n");
+  printf("                                                                      \n");
+  printf("   <filename>   Input/output file names                               \n");
+  printf("                                                                      \n");
+  printf("   INPUT FILE PARAMS                                                  \n");
+  printf("   -s SIZE      Size of samples                    (in bytes) [%i]    \n",DEF_SAMP_SIZE);
+  printf("   -S RATE      Sample Rate                        (in S/s)   [%i]    \n",DEF_SAMP_RATE);
+  printf("                                                                      \n");
+  printf("   OUTPUT FILE PARAMS                                                 \n");
+  printf("   -t INTERVAL  Thinning interval                  (in ms)    [%i]    \n",DEF_THIN_INTERVAL);
+  printf("   -n NUM       # samples to grab                             [%i]    \n",DEF_NUM_SAMPS);
+  printf("                                                                      \n");
+  printf("   -h HBYTES    Size of header                     (in bytes) [%i]    \n",DEF_SKIP);
+  printf("   -f HBYTES    Size of footer                     (in bytes) [%i]    \n",DEF_SKIP);
+  printf("   -i ITER      Total number of thinning intervals            [%i]    \n",DEF_NUM_ITER);
+  printf("   -v           Verbose                                       [%i]    \n",DEF_VERBOSE);
+  printf("                                                                      \n");
 }
