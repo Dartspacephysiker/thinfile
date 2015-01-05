@@ -6,14 +6,13 @@
 #include <sys/stat.h>
 
 #define DEF_SAMP_RATE     20000000
-#define DEF_SAMP_SIZE     1
+#define DEF_SAMP_SIZE     2
 #define DEF_THIN_INTERVAL 1000
-#define DEF_NUM_SAMPS     8192
+#define DEF_NUM_SAMPS     20000000
 
 #define DEF_SKIP          0
-#define DEF_NUM_ITER      0
-
-#define DEF_VERBOSE       0
+#define DEF_NUM_ITER      600
+#define DEF_VERBOSE       1
 
 //function declarations
 void vUsage(void);
@@ -71,117 +70,117 @@ int main( int argc, char * argv[] )
   strcpy(szOutFile,"");                // Default is stdout
 
   for (iArgIdx=1; iArgIdx<argc; iArgIdx++) 
+  {
+
+    switch (argv[iArgIdx][0]) 
     {
+    case '-' :
+      switch (argv[iArgIdx][1]) 
+      {
+        case 's' :                   /* Sample size */
+	  iArgIdx++;
+	  if(iArgIdx >= argc)
+	  {
+	    vUsage();
+	    return EXIT_FAILURE;
+	  }
+	  sscanf(argv[iArgIdx],"%" PRIi64 ,&llSampleSize);
+	  break;
 
-      switch (argv[iArgIdx][0]) 
-        {
-	case '-' :
-	  switch (argv[iArgIdx][1]) 
-	    {
-	    case 's' :                   /* Sample size */
-	      iArgIdx++;
-	      if(iArgIdx >= argc)
-		{
-		  vUsage();
-		  return EXIT_FAILURE;
-		}
-	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llSampleSize);
-	      break;
+        case 'S' :                   /* Sample rate */
+	  iArgIdx++;
+	  if(iArgIdx >= argc)
+	  {
+	    vUsage();
+	    return EXIT_FAILURE;
+	  }
+	  sscanf(argv[iArgIdx],"%" PRIi64 ,&llSampleRate);
+	  break;
+	  
+        case 't' :                   /* Thinning Interval */
+	  iArgIdx++;
+	  if(iArgIdx >= argc)
+	  {
+	    vUsage();
+	    return EXIT_FAILURE;
+	  }
+	  sscanf(argv[iArgIdx],"%" PRIi64 ,&llThinInterval);
+	  break;
 
-	    case 'S' :                   /* Sample rate */
-	      iArgIdx++;
-	      if(iArgIdx >= argc)
-		{
-		  vUsage();
-		  return EXIT_FAILURE;
-		}
-	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llSampleRate);
-	      break;
+        case 'n' :                   /* # Samples */
+	  iArgIdx++;
+	  if(iArgIdx >= argc)
+	  {
+	    vUsage();
+	    return EXIT_FAILURE;
+	  }
+	  sscanf(argv[iArgIdx],"%" PRIi64 ,&llNumSamps);
+	  break;
 
-	    case 't' :                   /* Thinning Interval */
-	      iArgIdx++;
-	      if(iArgIdx >= argc)
-		{
-		  vUsage();
-		  return EXIT_FAILURE;
-		}
-	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llThinInterval);
-	      break;
+        case 'h' :                   /* Header bytes to skip */
+	  iArgIdx++;
+	  if(iArgIdx >= argc)
+	  {
+	    vUsage();
+	    return EXIT_FAILURE;
+	  }
+	  sscanf(argv[iArgIdx],"%" PRIi64 ,&llHeaderSkipBytes);
+	  break;
 
-	    case 'n' :                   /* # Samples */
-	      iArgIdx++;
-	      if(iArgIdx >= argc)
-		{
-		  vUsage();
-		  return EXIT_FAILURE;
-		}
-	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llNumSamps);
-	      break;
+        case 'f' :                   /* Footer bytes to skip */
+	  iArgIdx++;
+	  if(iArgIdx >= argc)
+	  {
+	    vUsage();
+	    return EXIT_FAILURE;
+	  }
+	  sscanf(argv[iArgIdx],"%" PRIi64 ,&llFooterSkipBytes);
+	  break;
+	  
+        case 'i' :                   /* # Iterations */
+	  iArgIdx++;
+	  if(iArgIdx >= argc)
+	  {
+	    vUsage();
+	    return EXIT_FAILURE;
+	  }
+	  sscanf(argv[iArgIdx],"%" PRIi64 ,&llNumIterations);
+	  break;
 
-	    case 'h' :                   /* Header bytes to skip */
-	      iArgIdx++;
-	      if(iArgIdx >= argc)
-		{
-		  vUsage();
-		  return EXIT_FAILURE;
-		}
-	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llHeaderSkipBytes);
-	      break;
-
-	    case 'f' :                   /* Footer bytes to skip */
-	      iArgIdx++;
-	      if(iArgIdx >= argc)
-		{
-		  vUsage();
-		  return EXIT_FAILURE;
-		}
-	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llFooterSkipBytes);
-	      break;
-
-	    case 'i' :                   /* # Iterations */
-	      iArgIdx++;
-	      if(iArgIdx >= argc)
-		{
-		  vUsage();
-		  return EXIT_FAILURE;
-		}
-	      sscanf(argv[iArgIdx],"%" PRIi64 ,&llNumIterations);
-	      break;
-
-	    case 'v' :                  /* Verbosities */
-	      bVerbose = 1;
-	      break;
+        case 'v' :                  /* Verbosities */
+	  bVerbose = 1;
+	  break;
 	      
-	    default :
-	      break;
-	    } /* end flag switch */
+        default :
 	  break;
+      } /* end flag switch */
+      break;
 
-	default :
-	  if (szInFile[0] == '\0') strcpy(szInFile, argv[iArgIdx]);
-	  else                     strcpy(szOutFile,argv[iArgIdx]);
-	  break;
+      default :
+	if (szInFile[0] == '\0') strcpy(szInFile, argv[iArgIdx]);
+	else                     strcpy(szOutFile,argv[iArgIdx]);
+	break;
 
-        } /* end command line arg switch */
-    } /* end for all arguments */
+    } /* end command line arg switch */
+  } /* end for all arguments */
 
   printf("\n");
-  printf("Sample size            :\t%" PRIi64 " bytes\n",llSampleSize);
-  printf("Sample rate            :\t%" PRIi64 " S/s\n",llSampleRate);
-  printf("Thinning interval      :\t%" PRIi64 " ms\n",llThinInterval);
-  printf("Number of samples      :\t%" PRIi64 " \n",llNumSamps);
+  printf("Sample size          :\t%" PRIi64 " bytes\n",llSampleSize);
+  printf("Sample rate          :\t%" PRIi64 " S/s\n",llSampleRate);
+  printf("Thinning interval    :\t%" PRIi64 " ms\n",llThinInterval);
+  printf("Number of samples    :\t%" PRIi64 " \n",llNumSamps);
   
-  if ( llHeaderSkipBytes || llFooterSkipBytes )
-  {
-    printf("\n");
+//  if ( llHeaderSkipBytes || llFooterSkipBytes )
+//  {
+//    printf("\n");
     printf("Header bytes to skip :\t%" PRIi64 " bytes\n",llHeaderSkipBytes);
     printf("Footer bytes to skip :\t%" PRIi64 " bytes\n",llFooterSkipBytes);    
-  }
+//  }
 
-  if ( llNumIterations != 0 )
-  {
-    printf("Number of iterations :\t%" PRIi64 " bytes\n",llNumIterations);    
-  }
+//  if ( llNumIterations != 0 )
+//  {
+    printf("Number of iterations :\t%" PRIi64 " \n",llNumIterations);    
+//  }
 
   if ( llNumIterations < 0 || llSampleSize <= 0 || llThinInterval <= 0 || llNumSamps <= 0 || llHeaderSkipBytes < 0 || llFooterSkipBytes < 0 )
   {
@@ -189,36 +188,39 @@ int main( int argc, char * argv[] )
     return EXIT_FAILURE;
   }
 
+  printf(" \n");    
+
   //Calculate size of buffer that we need
   pauBuff = calloc( llNumSamps, llSampleSize );
+  printf("Buffer size          :\t%" PRIi64 " \n",pauBuff);    
 
   //Based on sample rate (S/s) and thinning interval (ms),
   //calculate number of samples between each interval
   ullInterval = llSampleRate * llThinInterval / 1000;
 
-  printf("# Samples/Interval:\t%" PRIu64 " \n",ullInterval);
+  printf("Samples per interval :\t%" PRIu64 " \n",ullInterval);
   printf("\n");
 
   //Can't allow more samples to be grabbed than are in an interval
   if (ullInterval < llNumSamps )
-    {
-      fprintf(stderr,"Number of samples requested is greater than samples per interval!\nQuitting...\n");
-      return EXIT_FAILURE;
-    }
+  {
+    fprintf(stderr,"Number of samples requested is greater than samples per interval!\nQuitting...\n");
+    return EXIT_FAILURE;
+  }
   
   //Open input file
   if (strlen(szInFile)==0) 
-    {
-      vUsage();
-      return EXIT_FAILURE;
-    }
+  {
+    vUsage();
+    return EXIT_FAILURE;
+  }
 
   psuInFile = fopen(szInFile,"rb");
   if (psuInFile == NULL) 
-    {
-      fprintf(stderr, "Error opening input file\n");
-      return EXIT_FAILURE;
-    }  
+  {
+    fprintf(stderr, "Error opening input file\n");
+    return EXIT_FAILURE;
+  }  
   printf("Input file: %s\n", szInFile);
 
   //Get input file stats
@@ -226,20 +228,20 @@ int main( int argc, char * argv[] )
 
   // If output file specified then open it    
   if (strlen(szOutFile) != 0)
+  {
+    psuOutFile = fopen(szOutFile,"w");
+    if (psuOutFile == NULL) 
     {
-      psuOutFile = fopen(szOutFile,"w");
-      if (psuOutFile == NULL) 
-	{
-	  fprintf(stderr, "Error opening output file\n");
-	  return EXIT_FAILURE;
-	}
+      fprintf(stderr, "Error opening output file\n");
+      return EXIT_FAILURE;
+    }
         
-      printf("Output file: %s\n", szInFile);
-    }
+    printf("Output file: %s\n", szOutFile);
+  }
   else  // No output file name so use stdout
-    {
-      psuOutFile = stdout;
-    }
+  {
+    psuOutFile = stdout;
+  }
 
   //To the beginning!
   ullInFilePos = fseek(psuInFile, llHeaderSkipBytes, SEEK_SET);   //If header bytes given, skip those; otherwise, go to zero
@@ -248,52 +250,58 @@ int main( int argc, char * argv[] )
   ullTotBytesRead = 0; 
   ullBytesWritten = 0;
 
-
+  //Exclude any footers specified by user
   if ( llFooterSkipBytes )
   {
     suInFileStat.st_size -= llFooterSkipBytes;
   }
-  
-  
+    
   printf("\nThinning %s...\n", szInFile);
  
   while( ( ullInFilePos = ftell(psuInFile) ) < suInFileStat.st_size  )
+  {
+    //Get samples from infile
+    // ullBytesRead = fread(pauBuff, llSampleSize, llNumSamps, psuInFile);
+    ullBytesRead = fread(pauBuff, 1, llSampleSize*llNumSamps, psuInFile);
+    if (ullBytesRead != llSampleSize * llNumSamps )
     {
-      //Get samples from infile
-      ullBytesRead = fread(pauBuff, llSampleSize, llNumSamps, psuInFile);
-      if (ullBytesRead != llSampleSize * llNumSamps )
-	{
-	  fprintf(stderr,"Only read %" PRIu64 " bytes of %" PRIu64 " requested!\nEOF?\n",ullBytesRead,llSampleSize*llNumSamps);
-	  break;
-	}
-
-      //Write samples to outfile
-      ullBytesWritten = fwrite(pauBuff, llSampleSize, llNumSamps, psuOutFile);
-      if ( ullBytesWritten != ullBytesRead )
-	{
-	  fprintf(stderr,"Only wrote %" PRIu64 " bytes of %" PRIu64 " requested!\nWrite error?\n",ullBytesWritten,ullBytesRead);
-	  break;
-	}
-      
-      if (bVerbose)
-	printf("Read %" PRIu64 " bytes (Sample #%" PRIu64 ")\n",ullInFilePos,ullSampsRead);
-
-      ullTotBytesRead += ullBytesRead;
-      ullSampsRead++;
-
-      fseek(psuInFile, ullInterval , SEEK_CUR );
-
-      if( (llNumIterations != 0 ) && ( ullSampsRead >= llNumIterations ) )
-      {
-	printf("Read %" PRIu64 " samples total! Breaking out of loop...\n", ullSampsRead);
-	break;
-      }
+      fprintf(stderr,"Only read %" PRIu64 " bytes of %" PRIu64 " requested!\nEOF?\n",ullBytesRead,llSampleSize*llNumSamps);
+      break;
     }
+
+    //Write samples to outfile
+    // ullBytesWritten = fwrite(pauBuff, llSampleSize, llNumSamps, psuOutFile);
+    ullBytesWritten = fwrite(pauBuff, 1, llSampleSize*llNumSamps, psuOutFile);
+    if ( ullBytesWritten != ullBytesRead )
+    {
+      fprintf(stderr,"Only wrote %" PRIu64 " bytes of %" PRIu64 " requested!\nWrite error?\n",ullBytesWritten,ullBytesRead);
+      break;
+    }
+      
+    if (bVerbose)
+    {// printf("Read %" PRIu64 " bytes (iteration #%" PRIu64 ")\n",ullInFilePos,ullSampsRead);
+      printf("Iteration : %" PRIu64 ": ",ullSampsRead);
+      printf("Position  : %" PRIu64 " bytes \n",ullInFilePos);
+      printf("read %" PRIu64 "; wrote %" PRIu64 "; ",ullBytesWritten,ullBytesRead);
+    }
+
+    ullTotBytesRead += ullBytesRead;
+    ullSampsRead++;
+
+    fseek(psuInFile, ullInterval , SEEK_CUR );
+
+    if( (llNumIterations != 0 ) && ( ullSampsRead >= llNumIterations ) )
+    {
+      printf("Completed %" PRIu64 " iterations! Breaking out of loop...\n", ullSampsRead);
+      break;
+    }
+  }
   
 
   //Summary
-  printf("Wrote %" PRIu64 " bytes out of %" PRIu64 " bytes total\n", ullTotBytesRead, (suInFileStat.st_size - llHeaderSkipBytes));
-  printf("Output file is %.9f%% smaller than input file\n", (float)((float)( ullTotBytesRead * llSampleSize )/(float)(suInFileStat.st_size-llHeaderSkipBytes)));
+  printf("Wrote %" PRIu64 "./%" PRIu64 ". (Bytes / Total Bytes) \n", ullTotBytesRead, (suInFileStat.st_size - llHeaderSkipBytes));
+// printf("Wrote %" PRIu64 " bytes out of %" PRIu64 " bytes total\n", ullTotBytesRead, (suInFileStat.st_size - llHeaderSkipBytes));
+  printf("Output file size is %.9f%% of input file\n", (float)((float)( ullTotBytesRead * llSampleSize )/(float)(suInFileStat.st_size-llHeaderSkipBytes)));
 
   //close files
   fclose(psuInFile);
