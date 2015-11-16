@@ -30,11 +30,11 @@ Footer 0  (optional)                         :  [0x46 (ASCII "F")]
 Footer FBYTES-1                              :  [0x46 (ASCII "F")]              
 ```
                                                                        
-The total file size is HBYTES + (N_MINOR_PER_MAJOR x N_MAJOR ) x SAMPLE_SIZE+FBYTES
+The total file size is HBYTES + (N_MINOR_PER_MAJOR x N_MAJOR ) x SAMPLE_SIZE + FBYTES
 
 ###Version history
 ==================
-2015/11/15		v0.1	make_example_thinfile.c written, thinfile tested with example output
+2015/11/16		v0.1	make_example_thinfile.c written, thinfile tested with example output
 
 ##Examples
 ==========
