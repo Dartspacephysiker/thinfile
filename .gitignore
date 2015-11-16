@@ -1,0 +1,9 @@
+#No execs
+thinfile
+make_example_thinfile
+
+#No objects
+*.o
+
+#No data
+*.out
